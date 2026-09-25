@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import confetti from 'canvas-confetti';
 import { Business } from '../../types';
+import { api } from '../../api/client';
 import { Star, ExternalLink, MapPin, Sparkles, AlertCircle } from 'lucide-react';
 
 export const PublicReviewPage: React.FC = () => {
@@ -15,7 +15,7 @@ export const PublicReviewPage: React.FC = () => {
     const fetchBusiness = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`/api/public/business/${slug}`);
+        const res = await api.get(`/public/business/${slug}`);
         if (res.data.success) {
           setBusiness(res.data.data.business);
         }

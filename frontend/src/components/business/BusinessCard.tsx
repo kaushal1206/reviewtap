@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Business, BusinessStatus } from '../../types';
 import { Button } from '../common/Button';
+import { getApiAssetUrl } from '../../api/client';
 import { StatusBadge } from './StatusBadge';
 import { EditBusinessModal } from './EditBusinessModal';
 import {
@@ -80,7 +81,7 @@ export const BusinessCard: React.FC<BusinessCardProps> = ({
             className="p-2 bg-white rounded-xl shadow-md border border-slate-700/60 hover:scale-105 transition-transform shrink-0"
           >
             <img
-              src={`/api/businesses/${business.id}/qr?format=svg`}
+              src={getApiAssetUrl(`/api/businesses/${business.id}/qr?format=svg`)}
               alt="QR Code"
               className="w-10 h-10 block"
             />

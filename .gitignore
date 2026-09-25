@@ -29,6 +29,7 @@ prisma/*.db
 prisma/*.db-journal
 *.dump
 *.sql
+!backend/prisma/migrations/**/*.sql
 *.sqlite
 
 # Logs and cache
