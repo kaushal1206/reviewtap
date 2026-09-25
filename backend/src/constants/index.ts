@@ -1,0 +1,16 @@
+export const JWT_ACCESS_EXPIRY = '15m';
+export const JWT_REFRESH_EXPIRY_DAYS = 30;
+
+export const REFRESH_COOKIE_NAME = 'reviewtap_refresh_token';
+
+export const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  MOVED_TEMPORARILY: 302,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  INTERNAL_SERVER_ERROR: 500,
+} as const;

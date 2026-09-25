@@ -1,0 +1,499 @@
+// Prisma Schema for ReviewTap (Tap. Scan. Review.)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  BUSINESS_OWNER
+}
+
+enum BusinessStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum NfcCardStatus {
+  UNASSIGNED
+  ASSIGNED
+  ACTIVE
+  INACTIVE
+  RETIRED
+}
+
+enum TapSourceType {
+  QR_CODE
+  NFC_CARD
+  COUNTERTOP_STAND
+  DIRECT_LINK
+}
+
+enum ScanSourceType {
+  QR
+  NFC
+  DIRECT
+}
+
+enum TeamRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum NotificationType {
+  SUBSCRIPTION
+  USAGE_LIMIT
+  NFC_CARD
+  BUSINESS
+  SYSTEM
+  TEAM
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum BusinessHealthStatus {
+  HEALTHY
+  WARNING
+  INACTIVE
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  fullName     String
+  role         Role           @default(BUSINESS_OWNER)
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  businesses      Business[]
+  refreshTokens   RefreshToken[]
+  teamMembers     TeamMember[]
+  sentInvitations Invitation[]   @relation("InvitedByUser")
+  notifications   Notification[]
+  activityLogs    ActivityLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Business {
+  id               String         @id @default(uuid())
+  ownerId          String
+  name             String
+  slug             String         @unique
+  googlePlaceId    String?
+  googleReviewUrl  String
+  logoUrl          String?
+  phone            String?
+  address          String?
+  category         String?
+  website          String?
+  whatsapp         String?
+  instagram        String?
+  brandingSettings Json?          @default("{\"primaryColor\": \"#4f46e5\", \"accentColor\": \"#6366f1\", \"showDirectRedirect\": true}")
+  status           BusinessStatus @default(ACTIVE)
+  isActive         Boolean        @default(true)
+  deletedAt        DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  owner            User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tapSources       TapSource[]
+  scanEvents       ScanEvent[]
+  nfcCards         NfcCard[]
+  subscription     Subscription?
+  paymentOrders    PaymentOrder[]
+  invoices         BillingInvoice[]
+  teamMembers      TeamMember[]
+  invitations      Invitation[]
+  notifications    Notification[]
+  activityLogs     ActivityLog[]
+  insights         BusinessInsight[]
+
+  @@index([ownerId])
+  @@index([ownerId, status])
+  @@index([slug])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("businesses")
+}
+
+model TapSource {
+  id          String        @id @default(uuid())
+  businessId  String
+  shortCode   String        @unique
+  type        TapSourceType @default(QR_CODE)
+  label       String        @default("Default QR Code")
+  nfcTagUid   String?       @unique
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  scanEvents  ScanEvent[]
+
+  @@index([businessId])
+  @@index([shortCode])
+  @@map("tap_sources")
+}
+
+model NfcCard {
+  id            String        @id @default(uuid())
+  publicId      String        @unique // e.g. RT-NFC-8A2F1C
+  label         String        @default("ReviewTap NFC Card")
+  status        NfcCardStatus @default(UNASSIGNED)
+  nfcTagUid     String?       @unique // Physical hardware chip UID
+  businessId    String?       // Nullable for unassigned inventory cards
+  batchNumber   String?       // Inventory/Manufacturing batch
+  activatedAt   DateTime?
+  deactivatedAt DateTime?
+  retiredAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  business      Business?     @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  scanEvents    ScanEvent[]
+
+  @@index([publicId])
+  @@index([businessId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("nfc_cards")
+}
+
+model ScanEvent {
+  id          String         @id @default(uuid())
+  businessId  String
+  tapSourceId String?
+  nfcCardId   String?
+  sourceType  ScanSourceType @default(QR)
+  ipHash      String?
+  userAgent   String?
+  deviceType  String?
+  os          String?
+  browser     String?
+  country     String?        @default("Unknown")
+  city        String?        @default("Unknown")
+  createdAt   DateTime       @default(now())
+
+  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  tapSource   TapSource?     @relation(fields: [tapSourceId], references: [id], onDelete: SetNull)
+  nfcCard     NfcCard?       @relation(fields: [nfcCardId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
+  @@index([businessId, sourceType, createdAt])
+  @@index([sourceType, createdAt])
+  @@index([createdAt])
+  @@index([tapSourceId, createdAt])
+  @@index([nfcCardId, createdAt])
+  @@map("scan_events")
+}
+
+model Plan {
+  id                     String          @id @default(uuid())
+  code                   String          @unique // e.g. FREE, STARTER, PRO, BUSINESS
+  name                   String          // Display Name: e.g. "Free Tier", "Pro Growth"
+  description            String?
+  price                  Int             @default(0) // Price in cents (e.g. 0, 1900 for $19.00)
+  currency               String          @default("USD")
+  billingInterval        BillingInterval @default(MONTHLY)
+  isActive               Boolean         @default(true)
+  isDefault              Boolean         @default(false)
+  
+  // Configurable Plan Limits & Capabilities
+  maxBusinesses          Int             @default(1)
+  maxQrSources           Int             @default(1)
+  maxNfcCards            Int             @default(1)
+  maxMonthlyEvents       Int             @default(500)
+  maxTeamMembers         Int             @default(1)
+  analyticsRetentionDays Int             @default(14)
+  customBranding         Boolean         @default(false)
+  exportAnalytics        Boolean         @default(false)
+  prioritySupport        Boolean         @default(false)
+
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  subscriptions          Subscription[]
+  paymentOrders          PaymentOrder[]
+
+  @@index([code])
+  @@index([isActive])
+  @@map("plans")
+}
+
+model Subscription {
+  id                    String             @id @default(uuid())
+  businessId            String             @unique
+  planId                String
+  status                SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart    DateTime           @default(now())
+  currentPeriodEnd      DateTime
+  cancelAtPeriodEnd     Boolean            @default(false)
+  canceledAt            DateTime?
+
+  // Gateway Placeholders (Billing-Ready domain architecture)
+  gatewayCustomerId     String?
+  gatewaySubscriptionId String?
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  business              Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  plan                  Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices              BillingInvoice[]
+
+  @@index([businessId])
+  @@index([planId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+enum PaymentOrderStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  PAID
+  PENDING
+  VOID
+  REFUNDED
+}
+
+enum WebhookStatus {
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+model PaymentOrder {
+  id               String             @id @default(uuid())
+  businessId       String
+  planId           String
+  amount           Int                // in cents (authoritative, computed by server)
+  currency         String             @default("USD")
+  status           PaymentOrderStatus @default(PENDING)
+  orderReference   String             @unique // e.g. RT-ORD-2026-A1B2C3
+  gateway          String             @default("SIMULATED")
+  gatewayOrderId   String?
+  gatewayPaymentId String?
+  signature        String?
+  metadata         Json?
+  completedAt      DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  business         Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  plan             Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices         BillingInvoice[]
+
+  @@index([businessId])
+  @@index([planId])
+  @@index([status])
+  @@index([orderReference])
+  @@index([createdAt])
+  @@map("payment_orders")
+}
+
+model BillingInvoice {
+  id                 String        @id @default(uuid())
+  invoiceNumber      String        @unique // e.g. RT-INV-2026-00001
+  businessId         String
+  subscriptionId     String
+  paymentOrderId     String?
+  planCode           String
+  planName           String
+  amount             Int           // in cents
+  currency           String        @default("USD")
+  status             InvoiceStatus @default(PAID)
+  billingPeriodStart DateTime
+  billingPeriodEnd   DateTime
+  paidAt             DateTime?
+  pdfReceiptUrl      String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  business           Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  subscription       Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  paymentOrder       PaymentOrder? @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([subscriptionId])
+  @@index([paymentOrderId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("billing_invoices")
+}
+
+model WebhookEvent {
+  id          String        @id @default(uuid())
+  provider    String        // e.g. STRIPE, RAZORPAY, SIMULATED
+  eventId     String        @unique
+  eventType   String
+  payload     Json
+  status      WebhookStatus @default(PROCESSED)
+  error       String?
+  processedAt DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+
+  @@index([provider, eventId])
+  @@index([eventType])
+  @@index([status])
+  @@map("webhook_events")
+}
+
+model TeamMember {
+  id         String    @id @default(uuid())
+  businessId String
+  userId     String
+  role       TeamRole  @default(STAFF)
+  invitedBy  String?
+  joinedAt   DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([businessId])
+  @@index([userId])
+  @@index([role])
+  @@map("team_members")
+}
+
+model Invitation {
+  id          String           @id @default(uuid())
+  businessId  String
+  email       String
+  role        TeamRole         @default(STAFF)
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invitedBy   User             @relation("InvitedByUser", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("invitations")
+}
+
+model Notification {
+  id          String             @id @default(uuid())
+  userId      String
+  businessId  String?
+  type        NotificationType
+  title       String
+  message     String
+  metadata    Json?
+  status      NotificationStatus @default(UNREAD)
+  readAt      DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business    Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([businessId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id          String    @id @default(uuid())
+  businessId  String
+  userId      String?
+  action      String
+  entityType  String?
+  entityId    String?
+  details     Json?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model BusinessInsight {
+  id           String    @id @default(uuid())
+  businessId   String
+  type         String
+  severity     String    @default("INFO")
+  title        String
+  description  String
+  actionUrl    String?
+  isDismissed  Boolean   @default(false)
+  metadata     Json?
+  calculatedAt DateTime  @default(now())
+
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, calculatedAt])
+  @@index([type])
+  @@index([isDismissed])
+  @@map("business_insights")
+}
+
+
