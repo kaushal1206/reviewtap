@@ -77,7 +77,7 @@ export class AuthController {
       res.cookie(REFRESH_COOKIE_NAME, rawRefreshToken, {
         httpOnly: true,
         secure: env.isProduction,
-        sameSite: 'lax',
+        sameSite: env.isProduction ? 'none' : 'lax',
         maxAge: JWT_REFRESH_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
       });
 
@@ -142,7 +142,7 @@ export class AuthController {
       res.cookie(REFRESH_COOKIE_NAME, rawRefreshToken, {
         httpOnly: true,
         secure: env.isProduction,
-        sameSite: 'lax',
+        sameSite: env.isProduction ? 'none' : 'lax',
         maxAge: JWT_REFRESH_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
       });
 
@@ -185,7 +185,11 @@ export class AuthController {
         if (storedToken) {
           await prisma.refreshToken.delete({ where: { id: storedToken.id } });
         }
-        res.clearCookie(REFRESH_COOKIE_NAME);
+        res.clearCookie(REFRESH_COOKIE_NAME, {
+          httpOnly: true,
+          secure: env.isProduction,
+          sameSite: env.isProduction ? 'none' : 'lax',
+        });
         res.status(HTTP_STATUS.UNAUTHORIZED).json({
           success: false,
           message: 'Refresh token expired or invalid',
@@ -218,7 +222,11 @@ export class AuthController {
           where: { token },
         });
       }
-      res.clearCookie(REFRESH_COOKIE_NAME);
+      res.clearCookie(REFRESH_COOKIE_NAME, {
+        httpOnly: true,
+        secure: env.isProduction,
+        sameSite: env.isProduction ? 'none' : 'lax',
+      });
       res.status(HTTP_STATUS.OK).json({
         success: true,
         message: 'Logged out successfully',

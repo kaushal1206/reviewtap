@@ -4,12 +4,17 @@
   "private": true,
   "description": "ReviewTap API and Smart Redirect Engine",
   "main": "dist/server.js",
+  "engines": {
+    "node": ">=20.0.0 <=22.x"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
+    "start:prod": "prisma migrate deploy && node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
     "test": "tsx src/tests/phase1.test.ts",
     "test:phase1": "tsx src/tests/phase1.test.ts",
