@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Business } from '../../types';
 import { Button } from '../common/Button';
-import { getApiAssetUrl } from '../../api/client';
 import { Download, ExternalLink, Copy, Check, Smartphone, Sparkles, AlertCircle } from 'lucide-react';
 
 interface QRCodeViewerProps {
@@ -30,7 +29,7 @@ export const QRCodeViewer: React.FC<QRCodeViewerProps> = ({ business }) => {
     if (format === 'png') setDownloadingPng(true);
     if (format === 'svg') setDownloadingSvg(true);
 
-    const downloadUrl = getApiAssetUrl(`/api/businesses/${business.id}/qr?format=${format}&download=true`);
+    const downloadUrl = `/api/businesses/${business.id}/qr?format=${format}&download=true`;
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = `${business.slug}-reviewtap-qr.${format}`;
@@ -70,7 +69,7 @@ export const QRCodeViewer: React.FC<QRCodeViewerProps> = ({ business }) => {
           {/* QR Code Container */}
           <div className="p-4 bg-white rounded-2xl shadow-xl border-4 border-indigo-500/20 mb-4 group-hover:scale-[1.02] transition-transform">
             <img
-              src={getApiAssetUrl(`/api/businesses/${business.id}/qr?format=svg`)}
+              src={`/api/businesses/${business.id}/qr?format=svg`}
               alt={`${business.name} QR Code`}
               className="w-48 h-48 block"
             />

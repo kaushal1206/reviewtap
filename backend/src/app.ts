@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
-import { prisma } from './config/db.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './routes/auth.routes.js';
 import businessRoutes from './routes/business.routes.js';
@@ -37,45 +36,13 @@ export function createApp(): Express {
     })
   );
 
-  // Build allowed origins list from environment
-  const envOrigins = [
-    process.env.CLIENT_URL,
-    process.env.FRONTEND_URL,
-    process.env.CORS_ORIGIN,
-  ]
-    .filter(Boolean)
-    .flatMap((url) => (url as string).split(',').map((u) => u.trim()))
-    .filter(Boolean);
-
-  const allowedOrigins: string[] = Array.from(
-    new Set([
-      ...envOrigins,
-      env.CLIENT_URL,
-      ...(!env.isProduction ? ['http://localhost:5173', 'http://127.0.0.1:5173'] : []),
-    ])
-  ).filter(Boolean);
-
   // CORS
   app.use(
     cors({
-      origin: (requestOrigin, callback) => {
-        // Allow requests without Origin header (curl, mobile apps, direct redirect hops)
-        if (!requestOrigin) return callback(null, true);
-
-        if (allowedOrigins.includes(requestOrigin)) {
-          return callback(null, true);
-        }
-
-        // In non-production, allow any localhost port
-        if (!env.isProduction && /^http:\/\/localhost(:\d+)?$/.test(requestOrigin)) {
-          return callback(null, true);
-        }
-
-        return callback(new Error(`CORS policy: Origin ${requestOrigin} not permitted.`));
-      },
+      origin: [env.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     })
   );
 
@@ -93,25 +60,14 @@ export function createApp(): Express {
     message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests, please try again later.' } },
   });
 
-  // Health check (reused for /api/health and /health, verifying API process + PostgreSQL connectivity)
-  app.get(['/api/health', '/health'], async (_req, res) => {
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      res.json({
-        status: 'healthy',
-        database: 'connected',
-        timestamp: new Date().toISOString(),
-        service: 'ReviewTap API & Redirect Engine',
-        version: '2.0.0',
-      });
-    } catch (dbError) {
-      res.status(503).json({
-        status: 'unhealthy',
-        database: 'disconnected',
-        error: dbError instanceof Error ? dbError.message : 'Database error',
-        timestamp: new Date().toISOString(),
-      });
-    }
+  // Health check
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'ReviewTap API & Redirect Engine',
+      version: '2.0.0',
+    });
   });
 
   // API Routes

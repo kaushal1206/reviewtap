@@ -10,7 +10,6 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
     "test": "tsx src/tests/phase1.test.ts",
     "test:phase1": "tsx src/tests/phase1.test.ts",

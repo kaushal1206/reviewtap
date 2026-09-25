@@ -1,4 +1,4 @@
-import { api, getApiAssetUrl } from '../api/client';
+import { api } from '../api/client';
 import { ApiResponse, NfcCard, NfcCardCounts, NfcCardStatus, PaginationMeta, CreateNfcCardDto, UpdateNfcCardDto } from '../types';
 
 export interface NfcListParams {
@@ -59,6 +59,6 @@ export class NfcService {
   }
 
   static getQrCodeUrl(id: string, format: 'svg' | 'png' = 'svg', download: boolean = false) {
-    return getApiAssetUrl(`/api/nfc/${id}/qr?format=${format}&download=${download}`);
+    return `/api/nfc/${id}/qr?format=${format}&download=${download}`;
   }
 }

@@ -9,10 +9,9 @@ async function bootstrap() {
     await prisma.$connect();
     console.log('✅ Connected to PostgreSQL database via Prisma');
 
-    const host = '0.0.0.0';
-    const server = app.listen(env.PORT, host, () => {
-      console.log(`🚀 ReviewTap Engine running on http://${host}:${env.PORT}`);
-      console.log(`📡 Redirect Engine active at: http://${host}:${env.PORT}/r/:slug`);
+    const server = app.listen(env.PORT, () => {
+      console.log(`🚀 ReviewTap Engine running on http://localhost:${env.PORT}`);
+      console.log(`📡 Redirect Engine active at: http://localhost:${env.PORT}/r/:slug`);
     });
 
     const shutdown = async () => {
